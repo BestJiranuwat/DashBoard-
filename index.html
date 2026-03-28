@@ -677,7 +677,7 @@ async function generateExecutiveSummary() {
     }
 
     const resultsData = results.map(item => `- ${item.itemName}: Mean=${item.stats.mean}`).join('\n');
-    const apiKey = "AIzaSyBopJhznXvooWSBbwkT-bDMb6qU2jZJqF0";
+    const apiKey = "AIzaSyD-7V_Y6Y1x6z9-YF5G9G8G7G6G5G4G3G2";
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
     const promptText = `วิเคราะห์สถิติดังนี้:\n${resultsData}\nสรุปผลเป็นภาษาไทยแบบ HTML`;
 
