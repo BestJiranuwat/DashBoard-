@@ -668,9 +668,8 @@
             el('gemini-summary-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
             
             const resultsData = analysisResults.map(item => `${item.itemName}: Mean=${item.stats.mean}, Discrimination=${item.stats.r}`).join('\n');
-            const apiKey = "AIzaSyBopJhznXvooWSBbWkT-bDMb6qU2jZJqF0";
-           const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-            try {
+           const apiKey = "AIzaSyBopJhznXvooWSBbwkT-bDMb6qU2jZJqF0";
+const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;            try {
                 const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: `สรุปสถิติแบบสอบถาม: Alpha=${overallStats.alpha}, ข้อมูล:\n${resultsData}` }] }], systemInstruction: { parts: [{ text: "คุณคือผู้เชี่ยวชาญสถิติวิจัยและ Explainable AI สรุปข้อมูลมาตรวัดลิเคิร์ทหรือคะแนนสอบ โดยเน้นอธิบายเหตุผลเบื้องหลังตัวเลขและความเป็นธรรม สรุปในรูปแบบ Markdown ภาษาไทยที่อ่านง่าย พร้อมใส่อิโมจิ" }] } }) });
                 const result = await response.json(); const text = result.candidates?.[0]?.content?.parts?.[0]?.text || "ล้มเหลวในการสร้างสรุป";
                 aiSummaryResultText = text; el('summary-content').innerHTML = text; 
