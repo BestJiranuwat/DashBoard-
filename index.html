@@ -661,12 +661,8 @@
             downloadCSV(csv, `Final_Analysis_Report_${new Date().getTime()}.csv`);
         }
 
-      async function generateExecutiveSummary() {
-    // เช็กว่ามีข้อมูลสถิติหรือยัง ถ้าไม่มีให้สั่งคำนวณก่อน
-    if (!window.analysisResults || window.analysisResults.length === 0) {
-        if (typeof analyzeData === 'function') analyzeData();
-    }
-    
+async function generateExecutiveSummary() {
+    // 1. ตรวจสอบว่ามีข้อมูลสถิติในระบบหรือยัง
     const results = window.analysisResults || [];
     const summarySection = document.getElementById('gemini-summary-section');
     const summaryContent = document.getElementById('summary-content');
@@ -676,17 +672,18 @@
     
     if (summarySection) summarySection.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-    // ถ้ายังไม่มีข้อมูลจริงๆ ให้หยุดทำงานและแจ้งผู้ใช้
+    // 2. ถ้าไม่มีข้อมูลสถิติ ให้หยุดและแจ้งเตือนผู้ใช้ (ป้องกัน Error 400)
     if (results.length === 0) {
-        if (summaryContent) summaryContent.innerHTML = "กรุณาอัปโหลดไฟล์และประมวลผลสถิติก่อนใช้งานการสรุปผล";
+        if (summaryContent) summaryContent.innerHTML = "<div class='p-4 text-orange-600 font-bold'>⚠️ กรุณาอัปโหลดไฟล์ข้อมูลและรอให้ตารางสถิติแสดงผลก่อน จึงจะสามารถใช้ AI สรุปผลได้ครับ</div>";
         return;
     }
 
+    // 3. เตรียมข้อมูลและเรียกใช้ API
     const resultsData = results.map(item => `- ${item.itemName}: Mean=${item.stats.mean}`).join('\n');
     const apiKey = "AIzaSyBopJhznXvooWSBbwkT-bDMb6qU2jZJqF0";
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
-    const promptText = `วิเคราะห์ผลสถิติดังนี้:\n${resultsData}\nช่วยสรุปผลในภาพรวม จุดเด่น จุดที่ควรพัฒนา และข้อเสนอแนะ (ตอบเป็นภาษาไทยและใช้รูปแบบ HTML ให้อ่านง่าย)`;
+    const promptText = `วิเคราะห์ผลสถิติดังนี้:\n${resultsData}\nช่วยสรุปผลในภาพรวม จุดเด่น จุดที่ควรพัฒนา และข้อเสนอแนะเชิงวิชาการ (ตอบเป็นภาษาไทยและใช้รูปแบบ HTML ให้อ่านง่าย)`;
 
     try {
         const response = await fetch(apiUrl, {
@@ -699,17 +696,16 @@
 
         const result = await response.json();
         
-        if (result.error) {
-            throw new Error(result.error.message);
-        }
+        if (result.error) throw new Error(result.error.message);
 
-        const text = result.candidates?.[0]?.content?.parts?.[0]?.text || "ไม่สามารถดึงข้อมูลสรุปได้";
+        const text = result.candidates?.[0]?.content?.parts?.[0]?.text || "ล้มเหลวในการสร้างเนื้อหา";
         aiSummaryResultText = text;
         if (summaryContent) summaryContent.innerHTML = text;
         if (window.MathJax) MathJax.typesetPromise();
+
     } catch (error) {
         console.error("Gemini Error:", error);
-        if (summaryContent) summaryContent.innerHTML = "เกิดข้อผิดพลาด: " + error.message;
+        if (summaryContent) summaryContent.innerHTML = "<div class='text-red-500'>เกิดข้อผิดพลาด: " + error.message + "</div>";
     }
 }
         function showManualModal() {
