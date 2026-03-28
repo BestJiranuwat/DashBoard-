@@ -3,103 +3,701 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>สถิติแบบสอบถาม</title>
+    <title>Dashboard วิเคราะห์สถิติอัจฉริยะ (XAI & Fairness)</title>
+    <!-- Load Tailwind CSS -->
     <script src="https://cdn.tailwindcss.com"></script>
+    <!-- MathJax Configuration for perfect formulas -->
+    <script>
+        window.MathJax = {
+            tex: {
+                inlineMath: [['$', '$'], ['\\(', '\\)']],
+                displayMath: [['$$', '$$'], ['\\[', '\\]']],
+                processEscapes: true
+            },
+            options: {
+                enableMenu: false
+            }
+        };
+    </script>
+    <script id="MathJax-script" async src="https://cdn.jsdelivr.net/npm/mathjax@3/es5/tex-mml-chtml.js"></script>
+    <!-- Load Sarabun for accessibility -->
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun:ital,wght@0,300;0,400;0,600;0,700;1,400&display=swap" rel="stylesheet">
+    <style>
+        /* Primary Font Configuration: TH Sarabun PSK */
+        @font-face {
+            font-family: 'TH Saraban PSK';
+            src: local('TH Saraban PSK'), local('TH Sarabun PSK');
+        }
+        
+        :root {
+            --primary: #4f46e5;
+            --secondary: #ec4899;
+            --bg-gradient: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%);
+        }
+
+        body {
+            font-family: 'Sarabun', 'TH Saraban PSK', sans-serif;
+            background: var(--bg-gradient);
+            color: #1e293b;
+            scroll-behavior: smooth;
+            -webkit-font-smoothing: antialiased;
+            font-size: 20px;
+        }
+
+        input, select, button, textarea {
+            font-family: 'Sarabun', 'TH Saraban PSK', sans-serif !important;
+        }
+
+        .text-gradient {
+            background: linear-gradient(to right, #4f46e5, #9333ea, #ec4899);
+            -webkit-background-clip: text;
+            -webkit-text-fill-color: transparent;
+        }
+
+        /* Interpretation Colors */
+        .interpret-high { background-color: #f0fdf4; color: #166534; border: 1px solid #bbf7d0; }
+        .interpret-moderate { background-color: #fffbeb; color: #92400e; border: 1px solid #fef3c7; }
+        .interpret-low { background-color: #fef2f2; color: #991b1b; border: 1px solid #fee2e2; }
+
+        .btn-modern {
+            transition: all 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+            position: relative;
+            overflow: hidden;
+            font-weight: bold;
+        }
+        .btn-modern:hover:not(:disabled) {
+            transform: translateY(-2px);
+            filter: brightness(1.1);
+            box-shadow: 0 10px 15px -3px rgba(0, 0, 0, 0.1);
+        }
+        
+        @media print {
+            .no-print, .floating-group, #file-upload-card, #analyze-area-header {
+                display: none !important;
+            }
+        }
+
+        /* Modal Overlay & Content */
+        .modal-overlay {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(15, 23, 42, 0.6);
+            z-index: 3000;
+            display: none;
+            justify-content: center;
+            align-items: center;
+            backdrop-filter: blur(8px);
+        }
+        .modal-content {
+            background-color: rgba(255, 255, 255, 0.98);
+            padding: 40px;
+            border-radius: 32px;
+            max-width: 950px;
+            width: 92%;
+            max-height: 85vh;
+            overflow-y: auto;
+            box-shadow: 0 30px 60px -12px rgba(0, 0, 0, 0.25);
+            border: 1px solid rgba(255, 255, 255, 0.3);
+        }
+
+        /* Floating Controls */
+        .floating-group {
+            position: fixed;
+            bottom: 2rem;
+            right: 1.5rem;
+            display: flex;
+            flex-direction: column;
+            gap: 0.85rem;
+            z-index: 1000;
+            padding: 14px;
+            background: rgba(255, 255, 255, 0.8);
+            backdrop-filter: blur(16px);
+            border-radius: 28px;
+            border: 1px solid rgba(255, 255, 255, 0.5);
+            box-shadow: 0 20px 40px -10px rgba(0, 0, 0, 0.15);
+        }
+        .floating-action-btn {
+            display: flex;
+            align-items: center;
+            width: 100%;
+            padding: 0 1.25rem;
+            height: 52px;
+            border-radius: 18px;
+            font-weight: bold;
+            transition: all 0.3s ease;
+            color: white;
+            white-space: nowrap;
+            min-width: 220px;
+            font-size: 22px;
+        }
+        
+        .tooltip-container {
+            position: relative;
+            display: inline-flex;
+            align-items: center;
+            cursor: help;
+        }
+        .tooltip-box {
+            visibility: hidden;
+            width: 300px;
+            background-color: #1e293b;
+            color: #fff;
+            text-align: left;
+            border-radius: 16px;
+            padding: 16px;
+            position: absolute;
+            z-index: 50;
+            bottom: 125%;
+            left: 50%;
+            margin-left: -150px;
+            opacity: 0;
+            transition: all 0.3s ease;
+            transform: translateY(10px);
+            box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3);
+            font-size: 18px;
+            font-weight: normal;
+        }
+        .tooltip-container:hover .tooltip-box {
+            visibility: visible;
+            opacity: 1;
+            transform: translateY(0);
+        }
+
+        .card-stat {
+            background: white;
+            border: 1px solid rgba(226, 232, 240, 0.8);
+            transition: all 0.3s ease;
+            border-radius: 32px;
+        }
+        .card-stat:hover { transform: translateY(-5px); box-shadow: 0 15px 30px -5px rgba(0, 0, 0, 0.05); }
+
+        .formula-container {
+            background: #f8fafc;
+            padding: 24px;
+            border-radius: 20px;
+            margin: 20px 0;
+            text-align: center;
+            border: 1px solid #e2e8f0;
+        }
+
+        .guide-table {
+            width: 100%;
+            border-collapse: collapse;
+            margin: 15px 0;
+            font-size: 16px;
+        }
+        .guide-table th, .guide-table td {
+            border: 1px solid #e2e8f0;
+            padding: 10px;
+            text-align: center;
+        }
+        .guide-table th { background: #f1f5f9; font-weight: bold; }
+    </style>
+    <!-- Load Analysis Libraries -->
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Sarabun&display=swap" rel="stylesheet">
-    <style>body { font-family: 'Sarabun', sans-serif; background-color: #f1f5f9; }</style>
+    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
 </head>
-<body class="p-8">
-    <div class="max-w-4xl mx-auto space-y-6">
-        <header class="text-center bg-white p-10 rounded-3xl shadow-sm border border-slate-200">
-            <h1 class="text-4xl font-bold text-slate-800">ระบบวิเคราะห์สถิติอัจฉริยะ</h1>
-            <p class="text-slate-500 mt-2">อัปโหลดไฟล์ Excel เพื่อเริ่มต้น</p>
-            
-            <div class="mt-8">
-                <input type="file" id="fileInput" class="block w-full text-sm text-slate-500 file:mr-4 file:py-3 file:px-6 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer" accept=".xlsx, .xls, .csv" onchange="handleFileUpload(event)">
+<body class="min-h-screen pb-32">
+
+    <div id="app" class="p-4 sm:p-12 max-w-6xl mx-auto space-y-12 text-slate-800">
+        
+        <!-- Header -->
+        <header class="text-center space-y-4">
+            <div class="inline-flex items-center gap-2 px-5 py-2 bg-white rounded-full shadow-sm border border-slate-100 text-slate-500 font-bold tracking-wide text-lg">
+                <span class="flex h-2 w-2 rounded-full bg-indigo-500 animate-pulse"></span>
+                ระบบวิเคราะห์
             </div>
+            <h1 class="text-5xl sm:text-7xl font-bold tracking-tight text-slate-900 leading-tight">
+                DashBoard <span class="text-gradient">ค่าทางสถิติ</span> สำหรับแบบสอบถาม
+            </h1>
         </header>
 
-        <div id="resultArea" class="hidden space-y-6">
-            <div class="grid grid-cols-2 gap-4">
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 text-center">
-                    <p class="text-slate-500">ค่าเฉลี่ยรวม</p>
-                    <p id="totalMean" class="text-4xl font-bold text-indigo-600">-</p>
+        <!-- Error Notification Area (Restored to fix TypeError) -->
+        <div id="error-message" class="hidden p-6 bg-rose-50 border-2 border-rose-100 text-rose-800 rounded-3xl shadow-sm flex items-center gap-4 animate-pulse no-print">
+            <span class="text-4xl text-rose-500">⚠️</span>
+            <div>
+                <p class="font-bold text-2xl text-slate-900">ตรวจพบข้อผิดพลาด</p>
+                <p id="error-text" class="text-xl opacity-90"></p>
+            </div>
+        </div>
+
+        <!-- 1. Data Import Section -->
+        <section id="file-upload-card" class="bg-white p-8 sm:p-10 rounded-[40px] shadow-xl shadow-indigo-100/40 border border-slate-100 relative overflow-hidden group no-print">
+            <h2 class="text-3xl sm:text-4xl font-bold text-slate-800 mb-8 flex items-center gap-4">
+                <span class="p-3 bg-indigo-600 text-white rounded-2xl shadow-lg">
+                    <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="17 8 12 3 7 8"/><line x1="12" y1="3" x2="12" y2="15"/></svg>
+                </span>
+                <div class="tooltip-container">
+                    1. นำเข้าข้อมูล
+                    <div class="tooltip-box">
+                        <b>ความโปร่งใส:</b> ระบบดึงข้อมูลจากทุกแผ่นงานและทุกคอลัมน์อัตโนมัติ เพื่อป้องกันข้อมูลสูญหาย
+                    </div>
                 </div>
-                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 text-center">
-                    <p class="text-slate-500">จำนวนข้อคำถาม</p>
-                    <p id="itemCount" class="text-4xl font-bold text-emerald-600">-</p>
+            </h2>
+            <label for="file-upload" class="block">
+                <div class="flex flex-col items-center justify-center p-12 sm:p-16 border-4 border-dashed border-slate-100 rounded-[32px] cursor-pointer bg-slate-50/50 hover:bg-indigo-50/50 hover:border-indigo-200 transition-all duration-500 text-center">
+                    <div class="w-20 h-20 bg-white rounded-2xl shadow-md flex items-center justify-center mb-6 group-hover:scale-110 transition-transform">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="40" height="40" viewBox="0 0 24 24" fill="none" stroke="#4f46e5" stroke-width="2"><path d="M14.5 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V7.5L14.5 2z"/><polyline points="14 2 14 8 20 8"/></svg>
+                    </div>
+                    <p class="text-3xl font-bold text-slate-700 leading-tight" id="file-status-text">คลิกเพื่อนำเข้าข้อมูลจากทุกแผ่นงาน</p>
+                    <p class="text-xl text-slate-400 mt-2 font-medium">รองรับ Excel (.xlsx, .xls) และ CSV</p>
+                    <input id="file-upload" type="file" accept=".csv,.xlsx,.xls" onchange="window.handleFileUpload(event)" class="hidden" />
+                </div>
+            </label>
+        </section>
+
+        <!-- 2. Processing Hub -->
+        <section class="bg-white p-8 sm:p-12 rounded-[40px] shadow-xl border border-slate-100">
+            <div id="analyze-area-header" class="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-6 mb-12 no-print">
+                <h2 class="text-3xl sm:text-4xl font-bold text-slate-800 flex items-center gap-4">
+                    <span class="p-3 bg-emerald-500 text-white rounded-2xl shadow-lg">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round"><path d="M22 12h-4l-3 9L9 3l-3 9H2"/></svg>
+                    </span>
+                    <div class="tooltip-container">
+                        2. ประมวลผลและตรวจสอบความเป็นธรรม
+                        <div class="tooltip-box">
+                            <b>XAI & Fairness:</b> ระบบวิเคราะห์อธิบายเหตุผลเบื้องหลังตัวเลขและความเป็นธรรมของข้อคำถาม
+                        </div>
+                    </div>
+                </h2>
+                <button id="analyze-button" onclick="window.analyzeData()" class="btn-modern bg-indigo-600 text-white font-bold py-4 px-10 rounded-2xl text-2xl shadow-lg shadow-indigo-200 disabled:opacity-20 w-full sm:w-auto" disabled>
+                    🚀 เริ่มวิเคราะห์อัจฉริยะ
+                </button>
+            </div>
+
+            <div id="analysis-status-message" class="text-2xl font-semibold text-slate-400 bg-slate-50 p-12 rounded-3xl border-2 border-dashed border-slate-100 text-center flex flex-col items-center gap-4 leading-relaxed no-print">
+                <div class="text-7xl opacity-30">📂</div>
+                <p>อัปโหลดไฟล์เรียบร้อย? ระบบพร้อมวิเคราะห์สถิติหลักให้คุณแล้วครับ</p>
+            </div>
+
+            <!-- Results display area -->
+            <div id="results-display-area" class="hidden space-y-12">
+                <div id="overall-summary-section" class="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-6 text-3xl font-bold"></div>
+                
+                <div class="grid grid-cols-1 md:grid-cols-2 gap-6 no-print">
+                    <div id="fairness-check-card" class="bg-amber-50 p-6 rounded-3xl border border-amber-100 space-y-3 shadow-sm">
+                        <h4 class="text-xl font-bold text-amber-900 flex items-center gap-2">⚖️ ตรวจสอบความเป็นธรรม</h4>
+                        <div id="fairness-content" class="text-lg text-amber-800 leading-relaxed"></div>
+                    </div>
+                    <div id="xai-insight-card" class="bg-indigo-50 p-6 rounded-3xl border border-indigo-100 space-y-3 shadow-sm">
+                        <h4 class="text-xl font-bold text-indigo-900 flex items-center gap-2">🔍 อธิบายผลทางสถิติ (XAI)</h4>
+                        <div id="xai-content" class="text-lg text-indigo-800 leading-relaxed"></div>
+                    </div>
+                </div>
+
+                <div id="overall-academic-interpretation" class="bg-indigo-50/50 p-8 rounded-3xl border border-indigo-100 shadow-inner text-2xl"></div>
+                
+                <div class="space-y-6">
+                    <h3 class="text-3xl font-bold text-slate-700 px-2 flex items-center gap-3">
+                        <svg xmlns="http://www.w3.org/2000/svg" width="28" height="28" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="text-indigo-500"><path d="M14 2H6a2 2 0 0 0-2 2v16a2 2 0 0 0 2 2h12a2 2 0 0 0 2-2V8z"/><polyline points="14 2 14 8 20 8"/><line x1="16" y1="13" x2="8" y2="13"/><line x1="16" y1="17" x2="8" y2="17"/><polyline points="10 9 9 9 8 9"/></svg>
+                        ตารางสรุปผลสถิติและค่าอำนาจจำแนกรายข้อ
+                    </h3>
+                    <div id="analysis-table-container" class="overflow-x-auto rounded-3xl border border-slate-200 bg-white shadow-sm">
+                        <div id="analysis-table"></div>
+                    </div>
+                </div>
+
+                <!-- 3. Visualization Area -->
+                <div id="chart-section" class="p-8 sm:p-10 bg-slate-50 border border-slate-200 rounded-[40px] space-y-10 shadow-inner no-print">
+                    <div class="text-center space-y-3">
+                        <h3 class="text-4xl font-bold text-slate-900">3. กราฟแจกแจงความถี่รายข้อ</h3>
+                        <p class="text-2xl text-slate-500">เลือก Item เพื่อดูรายละเอียดพฤติกรรมการตอบและการอภิปรายผล</p>
+                    </div>
+                    <div class="flex justify-center">
+                        <select id="item-selector" onchange="window.handleItemSelectionChange(this.value)" class="w-full md:w-3/4 p-5 border-2 border-indigo-200 rounded-2xl focus:ring-8 focus:ring-indigo-50 outline-none text-xl transition-all shadow-md bg-white font-bold text-indigo-900 cursor-pointer"></select>
+                    </div>
+                    <div class="h-[550px] w-full bg-white p-6 rounded-3xl border border-slate-100 shadow-xl">
+                        <canvas id="scoreDistributionChart"></canvas>
+                    </div>
+                    <div id="item-detail-interpretation-content" class="text-2xl"></div>
                 </div>
             </div>
-            
-            <div id="tableContainer" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden"></div>
-            
-            <button onclick="askAI()" class="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold hover:bg-slate-800 transition-all shadow-lg">🤖 สรุปผลอัจฉริยะโดย AI</button>
-            <div id="aiResponse" class="bg-indigo-50 p-6 rounded-2xl border border-indigo-100 text-slate-700 min-h-[50px] leading-relaxed">บทวิเคราะห์จาก AI จะปรากฏตรงนี้...</div>
+        </section>
+
+        <!-- 4. AI Strategy Area -->
+        <section id="gemini-summary-section" class="hidden p-10 sm:p-16 bg-slate-900 rounded-[50px] shadow-2xl relative overflow-hidden border-[8px] border-white no-print">
+            <div class="absolute top-0 right-0 -mr-20 -mt-20 w-80 h-80 bg-indigo-600/30 rounded-full blur-[80px]"></div>
+            <h3 class="text-4xl sm:text-5xl font-bold text-white mb-8 flex items-center justify-center gap-4 relative z-10 text-center text-4xl">🤖 บทวิเคราะห์อัจฉริยะโดย AI</h3>
+            <div id="summary-content" class="text-xl sm:text-2xl leading-relaxed text-slate-800 bg-white/95 backdrop-blur-2xl p-10 rounded-[32px] prose max-w-none shadow-2xl relative z-10 min-h-[250px]"></div>
+        </section>
+
+    </div>
+
+    <!-- Floating Actions -->
+    <div class="floating-group no-print">
+        <button id="gemini-summary-floating" onclick="window.generateExecutiveSummary()" class="floating-action-btn bg-indigo-600 shadow-indigo-200" disabled>
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="flex-shrink-0"><path d="m12 3-1.912 5.813a2 2 0 0 1-1.275 1.275L3 12l5.813 1.912a2 2 0 0 1 1.275 1.275L12 21l1.912-5.813a2 2 0 0 1 1.275-1.275L12 3Z"/></svg>
+            <span>🧠 สรุปผลอัจฉริยะ</span>
+        </button>
+
+        <button id="download-all-floating" onclick="window.downloadAllAnalysis()" class="floating-action-btn bg-emerald-600 shadow-emerald-200" disabled title="ดาวน์โหลดรายงานฉบับเต็ม">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="flex-shrink-0"><path d="M21 15v4a2 2 0 0 1-2 2H5a2 2 0 0 1-2-2v-4"/><polyline points="7 10 12 15 17 10"/><line x1="12" x2="12" y1="15" y2="3"/></svg>
+            <span>📥 โหลดรายงานฉบับเต็ม</span>
+        </button>
+
+        <button id="manual-floating" onclick="window.showManualModal()" class="floating-action-btn bg-white !text-indigo-600 border-2 border-indigo-100 shadow-md">
+            <svg xmlns="http://www.w3.org/2000/svg" width="24" height="24" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5" stroke-linecap="round" stroke-linejoin="round" class="flex-shrink-0"><circle cx="12" cy="12" r="10"/><path d="M9.09 9a3 3 0 0 1 5.83 1c0 2-3 3-3 3"/><line x1="12" x2="12.01" y2="17"/></svg>
+            <span>📘 คู่มือการใช้งาน</span>
+        </button>
+    </div>
+    
+    <!-- Manual Modal -->
+    <div id="manual-modal" class="modal-overlay" onclick="window.closeManualModal()">
+        <div class="modal-content" onclick="event.stopPropagation()">
+            <div id="manual-content-body" class="max-w-none text-slate-800">
+                <!-- Manual Content Injected via Script -->
+            </div>
+            <div class="mt-12 flex justify-center no-print">
+                <button onclick="window.closeManualModal()" class="px-14 py-5 bg-indigo-600 text-white text-3xl font-bold rounded-3xl hover:bg-indigo-700 transition-all shadow-2xl active:scale-95">
+                    🚀 รับทราบและเริ่มใช้งาน
+                </button>
+            </div>
         </div>
     </div>
 
     <script>
-        let results = [];
+        let itemData = []; 
+        let analysisResults = []; 
+        let myChart = null; 
+        let overallStats = {}; 
+        let aiSummaryResultText = ""; 
+        let sheetNames = [];
 
-        function handleFileUpload(e) {
-            const file = e.target.files[0];
-            if(!file) return;
-            const reader = new FileReader();
-            reader.onload = (event) => {
-                const data = event.target.result;
-                const workbook = XLSX.read(data, {type: 'binary'});
-                const sheet = workbook.Sheets[workbook.SheetNames[0]];
-                const rows = XLSX.utils.sheet_to_json(sheet, {header: 1});
-                
-                const headers = rows[0];
-                results = [];
-                for(let c=0; c<headers.length; c++) {
-                    let sum = 0, count = 0;
-                    for(let r=1; r<rows.length; r++) {
-                        let val = parseFloat(rows[r][c]);
-                        if(!isNaN(val)) { sum += val; count++; }
-                    }
-                    if(count > 0) results.push({ name: headers[c] || `Item ${c+1}`, mean: (sum/count).toFixed(2) });
+        const el = (id) => document.getElementById(id);
+
+        /**
+         * INTERPRETATION UTILS
+         */
+        function interpretMean(val) {
+            const m = parseFloat(val);
+            if (m >= 4.51) return { category: 'มากที่สุด 🤩', meanClass: 'interpret-high' };
+            if (m >= 3.51) return { category: 'มาก 😊', meanClass: 'interpret-high' };
+            if (m >= 2.51) return { category: 'ปานกลาง 😐', meanClass: 'interpret-moderate' };
+            if (m >= 1.51) return { category: 'น้อย 😟', meanClass: 'interpret-low' };
+            return { category: 'น้อยที่สุด 😭', meanClass: 'interpret-low' };
+        }
+
+        function interpretAlpha(alpha) {
+            const a = parseFloat(alpha);
+            if (a >= 0.70) return "เชื่อถือได้ ✅";
+            return "ควรปรับปรุงเครื่องมือ ⚠️";
+        }
+
+        function interpretDiscrimination(r) {
+            const val = parseFloat(r);
+            if (val >= 0.40) return "ดีมาก 💎";
+            if (val >= 0.30) return "ดี ✨";
+            if (val >= 0.20) return "ผ่านเกณฑ์ 👌";
+            return "ควรปรับปรุง 🛠️";
+        }
+
+        /**
+         * FINAL REFINED MANUAL CONTENT
+         */
+        const userManualHtml = `
+            <div style="text-align: center; margin-bottom: 30px;">
+                <h1 style="font-size: 3rem; font-weight: 900; color: #1e293b;">📘 คู่มือการใช้งานโปรแกรม</h1>
+                <p style="font-size: 1.5rem; color: #64748b;">วิเคราะห์สถิติแบบสอบถามอัจฉริยะ (XAI & Fairness Ready)</p>
+            </div>
+
+            <hr style="border: 0; border-top: 3px solid #f1f5f9; margin-bottom: 30px;">
+
+            <h2 style="font-size: 2.2rem; font-weight: 700; color: #4f46e5; margin-bottom: 15px;">1. 🔬 ขั้นตอนการเตรียมไฟล์ Excel</h2>
+            <p style="font-size: 1.25rem;">จัดตารางข้อมูลใน Excel ให้มีลักษณะดังนี้:</p>
+            
+            <div style="background: #fffbeb; border: 2px solid #fde68a; border-radius: 20px; padding: 25px; margin: 20px 0;">
+                <table class="guide-table">
+                    <thead>
+                        <tr>
+                            <th style="background: #e2e8f0;">ลำดับ (A)</th>
+                            <th>หัวข้อที่ 1 (B)</th>
+                            <th>หัวข้อที่ 2 (C)</th>
+                            <th>หัวข้อที่ 3 (D)</th>
+                        </tr>
+                    </thead>
+                    <tbody>
+                        <tr>
+                            <td style="background: #f8fafc;">1</td>
+                            <td>5</td>
+                            <td>4</td>
+                            <td>5</td>
+                        </tr>
+                        <tr>
+                            <td style="background: #f8fafc;">2</td>
+                            <td>3</td>
+                            <td>2</td>
+                            <td>4</td>
+                        </tr>
+                    </tbody>
+                </table>
+                <ul style="list-style: none; padding: 0; font-size: 1.1rem; color: #92400e; line-height: 1.8;">
+                    <li>📌 <b>แถวแรกสุด:</b> ต้องเป็นชื่อหัวข้อหรือรหัสข้อคำถาม</li>
+                    <li>📌 <b>คอลัมน์แรก (A):</b> รหัสประจำตัว (โปรแกรมจะนำเข้ามาแต่ไม่นำมาคำนวณ)</li>
+                    <li>📌 <b>คอลัมน์ถัดไป (B เป็นต้นไป):</b> ใส่ตัวเลขคะแนน เช่น 1 ถึง 5 หรือ 0 กับ 1</li>
+                    <li>📌 <b>รองรับหลายชีท:</b> หากมีหลายแผ่นงาน โปรแกรมจะดึงข้อมูลมารวมให้เองอัตโนมัติ</li>
+                </ul>
+            </div>
+
+            <h2 style="font-size: 2.2rem; font-weight: 700; color: #4f46e5; margin-bottom: 15px;">2. 🛡️ นิยามสถิติและสูตรที่ใช้คำนวณ</h2>
+            
+            <h3 style="font-size: 1.8rem; font-weight: 700; color: #334155;">2.1 Mean (ค่าเฉลี่ย)</h3>
+            <p>ระบุระดับความคิดเห็นเฉลี่ยของกลุ่มตัวอย่าง</p>
+            <div class="formula-container">
+                <p style="color: #64748b; font-weight: bold; margin-bottom: 5px;">สูตรคำนวณ:</p>
+                \\[ \\bar{x} = \\frac{\\sum_{i=1}^{n} x_i}{n} \\]
+            </div>
+
+            <h3 style="font-size: 1.8rem; font-weight: 700; color: #334155;">2.2 S.D. (ส่วนเบี่ยงเบนมาตรฐาน)</h3>
+            <p>วัดการกระจายตัว หากค่าต่ำแสดงว่าผู้ตอบมีความเห็นสอดคล้องกันสูง</p>
+            <div class="formula-container">
+                <p style="color: #64748b; font-weight: bold; margin-bottom: 5px;">สูตรคำนวณ:</p>
+                \\[ S.D. = \\sqrt{\\frac{\\sum_{i=1}^{n} (x_i - \\bar{x})^2}{n - 1}} \\]
+            </div>
+
+            <h3 style="font-size: 1.8rem; font-weight: 700; color: #334155;">2.3 Cronbach's Alpha (ความเชื่อมั่น)</h3>
+            <p>ประเมินคุณภาพความคงเส้นคงวาภายในของเครื่องมือประเมินทั้งฉบับ (เกณฑ์ยอมรับ $\\ge 0.70$)</p>
+            <div class="formula-container">
+                <p style="color: #64748b; font-weight: bold; margin-bottom: 5px;">สูตรคำนวณ:</p>
+                \\[ \\alpha = \\frac{k}{k-1} \\left( 1 - \\frac{\\sum s_i^2}{s_t^2} \\right) \\]
+            </div>
+
+            <h3 style="font-size: 1.8rem; font-weight: 700; color: #334155;">2.4 Corrected Item-Total Correlation (อำนาจจำแนก)</h3>
+            <p>วัดคุณภาพรายข้อว่าจำแนกความแตกต่างของผู้ตอบได้จริงหรือไม่ (เกณฑ์ยอมรับ $\\ge 0.20$)</p>
+
+            <h2 style="font-size: 2.2rem; font-weight: 700; color: #4f46e5; margin-top: 30px; margin-bottom: 15px;">3. 🚀 วิธีใช้งานโปรแกรม</h2>
+            <ol style="font-size: 1.25rem; line-height: 2.2;">
+                <li>1️⃣ คลิกที่ช่อง <b>"นำเข้าข้อมูล"</b> เพื่อเลือกไฟล์ Excel จากเครื่องของท่าน</li>
+                <li>2️⃣ กดปุ่ม <b>"เริ่มวิเคราะห์อัจฉริยะ"</b> เพื่อประมวลผลข้อมูล</li>
+                <li>3️⃣ เลื่อนดู <b>ตารางสถิติ</b> และ <b>กราฟความถี่</b> รายข้อ</li>
+                <li>4️⃣ กดปุ่ม <b>"สรุปผลด้วย AI"</b> เพื่อรับบทวิเคราะห์ผลวิจัยแบบอัตโนมัติ</li>
+                <li>5️⃣ กดปุ่ม <b>"โหลดรายงานฉบับเต็ม"</b> เพื่อบันทึกผลลัพธ์เป็นไฟล์ CSV</li>
+            </ol>
+        `;
+
+        function calculateAdvancedStats() {
+            if (itemData.length < 2) return { alpha: 0, itemVariances: itemData.map(() => ({ variance: 0, r: 0 })) };
+            const respondentsCount = Math.max(...itemData.map(i => i.scores.length));
+            const totalScores = new Array(respondentsCount).fill(0);
+            itemData.forEach(item => { for(let i = 0; i < respondentsCount; i++) { totalScores[i] += (item.scores[i] || 0); } });
+            const totalMeanOverall = totalScores.reduce((a, b) => a + b, 0) / respondentsCount;
+            const totalVariance = totalScores.reduce((a, b) => a + Math.pow(b - totalMeanOverall, 2), 0) / (respondentsCount - 1);
+
+            const itemVariances = itemData.map((item, idx) => {
+                const validScores = item.scores.filter(v => v !== null);
+                const n = validScores.length;
+                const itemMean = validScores.reduce((a, b) => a + b, 0) / n;
+                const itemVar = validScores.reduce((a, b) => a + Math.pow(b - itemMean, 2), 0) / (n - 1);
+                const currentItemScores = []; const correctedRestScores = [];
+                for(let k = 0; k < respondentsCount; k++) {
+                    if (item.scores[k] !== null) { currentItemScores.push(item.scores[k]); correctedRestScores.push(totalScores[k] - item.scores[k]); }
                 }
-                showResults();
-            };
-            reader.readAsBinaryString(file);
-        }
-
-        function showResults() {
-            document.getElementById('resultArea').classList.remove('hidden');
-            document.getElementById('itemCount').innerText = results.length;
-            const avg = (results.reduce((a, b) => a + parseFloat(b.mean), 0) / results.length).toFixed(2);
-            document.getElementById('totalMean').innerText = avg;
-
-            let html = '<table class="w-full text-left"><thead class="bg-slate-50 border-b border-slate-200"><tr><th class="p-4">ข้อคำถาม</th><th class="p-4 text-center">Mean</th></tr></thead><tbody class="divide-y divide-slate-100">';
-            results.forEach(r => {
-                html += `<tr><td class="p-4 text-slate-700">${r.name}</td><td class="p-4 text-center font-bold text-indigo-600">${r.mean}</td></tr>`;
+                const n_corr = currentItemScores.length;
+                const meanX = itemMean; const meanY = correctedRestScores.reduce((a, b) => a + b, 0) / n_corr;
+                let num = 0, denX = 0, denY = 0;
+                for(let j = 0; j < n_corr; j++) {
+                    const dx = currentItemScores[j] - meanX; const dy = correctedRestScores[j] - meanY;
+                    num += dx * dy; denX += dx * dx; denY += dy * dy;
+                }
+                const denom = Math.sqrt(denX * denY);
+                return { variance: itemVar, r: isNaN(num / denom) ? 0 : num / denom };
             });
-            html += '</tbody></table>';
-            document.getElementById('tableContainer').innerHTML = html;
+            const alpha = (itemData.length / (itemData.length - 1)) * (1 - (itemVariances.reduce((a, b) => a + b.variance, 0) / totalVariance));
+            return { alpha: isNaN(alpha) ? 0 : alpha, itemVariances };
         }
 
-        async function askAI() {
-            const box = document.getElementById('aiResponse');
-            box.innerText = "🌀 AI กำลังวิเคราะห์ข้อมูลของคุณ...";
-            const dataStr = results.map(r => `${r.name}:${r.mean}`).join(', ');
-            const apiKey = "AIzaSyBopJhznXvooWSBbwkT-bDMb6qU2jZJqF0";
-            const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+        function handleFileUpload(event) {
+            const file = event.target.files[0]; if (!file) return;
+            const errorMsgEl = el('error-message');
+            if (errorMsgEl) errorMsgEl.classList.add('hidden');
+            
+            itemData = []; sheetNames = [];
+            el('file-status-text').textContent = "📂 กำลังรวบรวมข้อมูล...";
+            el('analyze-button').disabled = true;
 
+            const reader = new FileReader();
+            reader.onload = (e) => {
+                try {
+                    const bstr = e.target.result;
+                    let allRows = [];
+                    if (file.name.match(/\.(xlsx|xls)$/i)) {
+                        const wb = XLSX.read(bstr, { type: "binary" });
+                        sheetNames = wb.SheetNames;
+                        wb.SheetNames.forEach((sheetName, index) => {
+                            const sheetRows = XLSX.utils.sheet_to_json(wb.Sheets[sheetName], { header: 1, defval: "" });
+                            if (index === 0) allRows = sheetRows;
+                            else allRows = allRows.concat(sheetRows.slice(1));
+                        });
+                    } else {
+                        const firstLine = bstr.split('\n')[0];
+                        const sep = firstLine.includes(';') ? ';' : (firstLine.includes('\t') ? '\t' : ',');
+                        allRows = bstr.split(/\r?\n/).map(r => r.split(sep).map(c => c.trim().replace(/^"|"$ /g, ''))).filter(r => r.length > 0 && r.some(c => c !== ""));
+                    }
+                    if (allRows.length < 2) throw new Error('ไฟล์ข้อมูลไม่เพียงพอ');
+
+                    let maxCols = 0; allRows.forEach(r => { if(r.length > maxCols) maxCols = r.length; });
+                    const headers = allRows[0];
+                    
+                    for (let colIndex = 0; colIndex < maxCols; colIndex++) {
+                        const itemName = (headers[colIndex] && headers[colIndex].toString().trim()) || `Item ${colIndex + 1}`;
+                        const itemScores = [];
+                        for (let rowIndex = 1; rowIndex < allRows.length; rowIndex++) {
+                            const val = parseFloat(allRows[rowIndex][colIndex]);
+                            itemScores.push(isNaN(val) ? null : val);
+                        }
+                        if (itemScores.some(v => v !== null)) itemData.push({ itemName, scores: itemScores });
+                    }
+                    el('analyze-button').disabled = false;
+                    el('analysis-status-message').innerHTML = `<div class="text-emerald-600 font-bold text-3xl animate-bounce text-center">✅ สแกนสำเร็จ! พบข้อมูล ${itemData.length} Item</div>`;
+                    el('file-status-text').textContent = `✅ ${file.name} (${itemData.length} Item)`;
+                } catch (error) {
+                    if (errorMsgEl) {
+                        errorMsgEl.classList.remove('hidden');
+                        el('error-text').textContent = error.message;
+                    }
+                }
+            };
+            if (file.name.match(/\.(xlsx|xls)$/i)) reader.readAsBinaryString(file);
+            else reader.readAsText(file, 'UTF-8');
+        }
+
+        function analyzeData() {
+            if (itemData.length === 0) return;
+            const advanced = calculateAdvancedStats();
+            el('results-display-area').classList.remove('hidden');
+            el('gemini-summary-section').classList.add('hidden'); 
+            el('analysis-status-message').classList.add('hidden');
+            
+            analysisResults = itemData.map((item, idx) => {
+                const validScores = item.scores.filter(v => v !== null);
+                const n_i = validScores.length;
+                const mean = validScores.reduce((a, b) => a + b, 0) / n_i;
+                const variance = item.scores.reduce((a, b) => a + Math.pow(b - mean, 2), 0) / (n_i - 1);
+                const sd = Math.sqrt(variance);
+                const meanRes = interpretMean(mean.toFixed(2));
+                return { 
+                    itemName: item.itemName, 
+                    stats: { 
+                        n: n_i, 
+                        mean: mean.toFixed(2), 
+                        sd: sd.toFixed(2), 
+                        r: advanced.itemVariances[idx].r.toFixed(3),
+                        category: meanRes.category,
+                        meanClass: meanRes.meanClass
+                    } 
+                };
+            });
+
+            overallStats = { 
+                mean: (analysisResults.reduce((a, b) => a + parseFloat(b.stats.mean), 0) / analysisResults.length).toFixed(2), 
+                meanSD: (analysisResults.reduce((a, b) => a + parseFloat(b.stats.sd), 0) / analysisResults.length).toFixed(2), 
+                n: Math.max(...itemData.map(i => i.scores.filter(v => v !== null).length)), 
+                alpha: advanced.alpha.toFixed(3) 
+            };
+
+            const sorted = [...analysisResults].sort((a, b) => Math.abs(parseFloat(b.stats.r)) - Math.abs(parseFloat(a.stats.r)));
+            el('xai-content').innerHTML = `💡 <b>ข้อที่ส่งผลสูงสุด:</b> ข้อ "${sorted[0].itemName}" มีค่าอำนาจจำแนกสูงสุด (${sorted[0].stats.r}) ซึ่งเป็นตัวแปรสำคัญที่กำหนดทิศทางคุณภาพผลลัพธ์ภาพรวม`;
+            const problematic = analysisResults.filter(i => parseFloat(i.stats.r) < 0.2).length;
+            el('fairness-content').innerHTML = problematic > 0 ? `⚠️ พบข้อที่มีอำนาจจำแนกต่ำกว่าเกณฑ์ 0.20 จำนวน ${problematic} ข้อ ซึ่งอาจส่งผลต่อความเป็นธรรมในการประเมิน` : "✅ ข้อมูลมีความสอดคล้องและเป็นธรรมในการจำแนกกลุ่มผู้ตอบได้ดีเยี่ยม";
+
+            renderOverallSummary(overallStats);
+            renderOverallAcademicInterpretation(overallStats);
+            renderAnalysisTable(analysisResults);
+            populateItemSelector(analysisResults);
+            handleItemSelectionChange('0');
+            el('gemini-summary-floating').disabled = false; el('download-all-floating').disabled = false;
+            window.scrollBy({ top: 400, behavior: 'smooth' });
+        }
+
+        function renderOverallSummary(overall) {
+            const meanRes = interpretMean(overall.mean);
+            el('overall-summary-section').innerHTML = `
+                <div class="card-stat p-8 flex flex-col items-center"><div class="text-5xl mb-2">🎯</div><p class="text-lg font-bold text-slate-400 uppercase tracking-widest">ค่าเฉลี่ยรวม</p><p class="text-6xl font-bold text-indigo-600 mt-2">${overall.mean}</p></div>
+                <div class="card-stat p-8 flex flex-col items-center"><div class="text-5xl mb-2">📐</div><p class="text-lg font-bold text-slate-400 uppercase tracking-widest">S.D. เฉลี่ย</p><p class="text-6xl font-bold text-emerald-500 mt-2">${overall.meanSD}</p></div>
+                <div class="card-stat p-8 flex flex-col items-center text-center"><div class="text-5xl mb-2">🛡️</div><p class="text-lg font-bold text-slate-400 uppercase tracking-widest">ความเชื่อถือได้</p><p class="text-6xl font-bold text-purple-600 mt-2">${overall.alpha}</p></div>
+                <div class="card-stat p-8 flex flex-col items-center text-center"><div class="text-5xl mb-2">🗣️</div><p class="text-lg font-bold text-slate-400 uppercase tracking-widest">สรุปภาพรวม</p><p class="text-3xl font-bold text-slate-700 mt-2 leading-tight">${meanRes.category}</p></div>`;
+        }
+
+        function renderOverallAcademicInterpretation(overall) {
+            const meanRes = interpretMean(overall.mean);
+            el('overall-academic-interpretation').innerHTML = `<h4 class="text-3xl font-bold text-indigo-900 mb-4 underline decoration-indigo-200 underline-offset-8">📖 สรุปผลการวิเคราะห์ระดับวิชาการ</h4><div class="space-y-4 text-2xl text-slate-700 leading-relaxed text-slate-800"><p>จากการบูรณาการข้อมูลผู้ประเมินรวม <strong>${overall.n}</strong> ท่าน พบว่าคะแนนเฉลี่ยภาพรวมอยู่ที่ <strong class="text-4xl text-indigo-600">${overall.mean}</strong> จัดอยู่ในระดับ <strong>"${meanRes.category}"</strong></p><p>ในด้านคุณภาพความคงเส้นคงวาภายใน มีค่าสัมประสิทธิ์แอลฟาเท่ากับ <strong class="text-indigo-600">${overall.alpha}</strong> จัดอยู่ในเกณฑ์ <strong>${interpretAlpha(overall.alpha)}</strong> มั่นใจในความเที่ยงตรงได้ครับ</p></div>`;
+        }
+
+        function renderAnalysisTable(results) {
+            el('analysis-table').innerHTML = `<table class="min-w-full bg-white border-collapse text-2xl text-slate-800"><thead class="bg-indigo-600 text-white font-bold text-center text-2xl"><tr><th class="py-6 px-8 text-left border-b border-indigo-500 text-xl">Item / ข้อคำถาม</th><th class="py-6 px-4">Mean</th><th class="py-6 px-4">S.D.</th><th class="py-6 px-4 text-xl">อำนาจจำแนก</th><th class="py-6 px-8">ระดับความหมาย</th></tr></thead><tbody class="divide-y divide-slate-100 text-center">${results.map(item => `<tr class="hover:bg-indigo-50/30 transition-colors text-2xl"><td class="py-5 px-8 font-medium text-left">${item.itemName}</td><td class="text-center font-bold text-indigo-700 text-3xl">${item.stats.mean}</td><td class="text-center text-slate-500 text-2xl">${item.stats.sd}</td><td class="text-center font-bold ${item.stats.r >= 0.2 ? 'text-emerald-600' : 'text-rose-500'} text-2xl">${item.stats.r}</td><td class="text-center py-5 px-8"><span class="${item.stats.meanClass} px-5 py-2 rounded-2xl font-bold shadow-sm inline-block text-xl">${item.stats.category}</span></td></tr>`).join('')}</tbody></table>`;
+        }
+
+        function populateItemSelector(results) { el('item-selector').innerHTML = results.map((item, index) => `<option value="${index}">${item.itemName}</option>`).join(''); }
+
+        function handleItemSelectionChange(selectedIndex) {
+            const index = parseInt(selectedIndex); if (isNaN(index)) return;
+            const item = analysisResults[index];
+            el('item-detail-interpretation-content').innerHTML = `<div class="mt-8 p-12 bg-white rounded-[40px] border-2 border-indigo-100 flex items-center gap-10 shadow-lg"><div class="p-8 bg-indigo-50 rounded-3xl shadow-sm text-7xl">🔍</div><div class="text-2xl leading-relaxed"><h4 class="text-4xl font-bold text-slate-800 mb-3 text-left">อภิปรายผล: ${item.itemName} <span class="xai-badge">XAI Enabled</span></h4><p class="text-left">ค่าเฉลี่ยคือ <strong class="text-5xl text-pink-600">${item.stats.mean}</strong> ระดับ <strong>"${item.stats.category}"</strong></p><p class="text-left">อำนาจจำแนกรายข้อ (Corrected Index): <strong class="text-3xl text-emerald-600">${item.stats.r}</strong> (${interpretDiscrimination(item.stats.r)})</p></div></div>`;
+            renderChart(itemData[index].scores, item.itemName);
+        }
+
+        function renderChart(scores, itemName) {
+            const ctx = el('scoreDistributionChart').getContext('2d');
+            const validScores = scores.filter(v => v !== null); const counts = {}; validScores.forEach(s => { counts[s] = (counts[s] || 0) + 1; });
+            let minScore = Math.min(...validScores); let maxScore = Math.max(...validScores);
+            if (maxScore <= 5 && minScore >= 0) { minScore = (validScores.includes(0)) ? 0 : 1; maxScore = 5; }
+            const labels = []; const data = []; for (let i = minScore; i <= maxScore; i++) { labels.push(i.toString()); data.push(counts[i] || 0); }
+            if (myChart) myChart.destroy();
+            myChart = new Chart(ctx, { type: 'bar', data: { labels: labels, datasets: [{ label: 'จำนวนผู้ตอบ', data: data, backgroundColor: '#4f46e5', borderRadius: 15 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { y: { beginAtZero: true, ticks: { font: { family: 'TH Saraban PSK', size: 18 } } }, x: { ticks: { font: { family: 'TH Saraban PSK', size: 22 } } } } } });
+        }
+
+        function downloadCSV(csv, name) {
+            const blob = new Blob([csv], { type: 'text/csv;charset=utf-8;' }); const url = URL.createObjectURL(blob);
+            const a = document.createElement('a'); a.href = url; a.download = name; a.click();
+        }
+
+        function downloadAllAnalysis() {
+            if (analysisResults.length === 0) return;
+            const overall = overallStats;
+            const aiText = aiSummaryResultText || "ไม่มีข้อมูลวิเคราะห์";
+            let csv = `\uFEFF"รายงานวิจัยฉบับสมบูรณ์ (XAI & Fairness Ready)"\n\n"1. สรุปภาพรวม"\n"N", ${overall.n}\n"Mean", ${overall.mean}\n"Alpha", ${overall.alpha}\n\n"รายละเอียดรายข้อ"\n${analysisResults.map(i => `"${i.itemName}", ${i.stats.mean}, ${i.stats.sd}, ${i.stats.r}, "${i.stats.category}"`).join('\n')}`;
+            downloadCSV(csv, `Final_Analysis_Report_${new Date().getTime()}.csv`);
+        }
+
+        async function generateExecutiveSummary() {
+            if (analysisResults.length === 0) analyzeData();
+            el('gemini-summary-section').classList.remove('hidden');
+            el('summary-content').innerHTML = `<div class="flex flex-col items-center gap-6 py-20 justify-center text-white"><div class="animate-spin h-14 w-14 border-8 border-indigo-200 border-t-indigo-600 rounded-full"></div><span class="text-3xl font-bold animate-pulse text-center">🧠 AI กำลังสรุปข้อมูลวิจัยให้คุณอย่างเป็นธรรม...</span></div>`;
+            el('gemini-summary-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+            
+            const resultsData = analysisResults.map(item => `${item.itemName}: Mean=${item.stats.mean}, Discrimination=${item.stats.r}`).join('\n');
+            const apiKey = "";
+            const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-2.5-flash-preview-09-2025:generateContent?key=${apiKey}`;
             try {
-                const response = await fetch(url, {
-                    method: 'POST',
-                    headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ contents: [{ parts: [{ text: `สรุปสถิตินี้เป็นภาษาไทย: ${dataStr}` }] }] })
-                });
-                const resData = await response.json();
-                box.innerText = resData.candidates[0].content.parts[0].text;
-            } catch (err) {
-                box.innerText = "❌ เกิดข้อผิดพลาดในการเชื่อมต่อ AI";
+                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: `สรุปสถิติแบบสอบถาม: Alpha=${overallStats.alpha}, ข้อมูล:\n${resultsData}` }] }], systemInstruction: { parts: [{ text: "คุณคือผู้เชี่ยวชาญสถิติวิจัยและ Explainable AI สรุปข้อมูลมาตรวัดลิเคิร์ทหรือคะแนนสอบ โดยเน้นอธิบายเหตุผลเบื้องหลังตัวเลขและความเป็นธรรม สรุปในรูปแบบ Markdown ภาษาไทยที่อ่านง่าย พร้อมใส่อิโมจิ" }] } }) });
+                const result = await response.json(); const text = result.candidates?.[0]?.content?.parts?.[0]?.text || "ล้มเหลวในการสร้างสรุป";
+                aiSummaryResultText = text; el('summary-content').innerHTML = text; 
+                if (window.MathJax) MathJax.typesetPromise();
+            } catch (error) { el('summary-content').innerHTML = `🚨 ข้อผิดพลาด AI: ${error.message}`; }
+        }
+
+        function showManualModal() {
+            const modal = el('manual-modal');
+            const contentBody = el('manual-content-body');
+            contentBody.innerHTML = userManualHtml;
+            modal.style.display = 'flex';
+            if (window.MathJax) {
+                setTimeout(() => {
+                    MathJax.typesetPromise([contentBody]).catch((err) => console.log('MathJax Error:', err));
+                }, 100);
             }
         }
+
+        function closeManualModal() { el('manual-modal').style.display = 'none'; }
+        window.handleFileUpload = handleFileUpload; window.analyzeData = analyzeData; window.generateExecutiveSummary = generateExecutiveSummary; window.downloadAllAnalysis = downloadAllAnalysis; window.showManualModal = showManualModal; window.closeManualModal = closeManualModal; window.handleItemSelectionChange = handleItemSelectionChange;
+
+        (function() {
+            const script = document.createElement('script');
+            script.src = "https://cdn.jsdelivr.net/npm/marked@12.0.2/marked.min.js";
+            document.head.appendChild(script);
+        })();
     </script>
 </body>
 </html>
