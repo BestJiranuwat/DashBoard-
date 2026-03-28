@@ -3,119 +3,88 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>Dashboard วิเคราะห์สถิติอัจฉริยะ (XAI & Fairness)</title>
+    <title>สถิติแบบสอบถาม</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="https://cdn.sheetjs.com/xlsx-0.20.1/package/dist/xlsx.full.min.js"></script>
-    <script src="https://cdn.jsdelivr.net/npm/chart.js@4.4.1/dist/chart.umd.min.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Sarabun:wght@300;400;700&display=swap" rel="stylesheet">
-    <style>
-        body { font-family: 'Sarabun', sans-serif; background: linear-gradient(135deg, #f8fafc 0%, #eff6ff 100%); min-height: 100vh; }
-        .card-stat { background: white; padding: 2rem; border-radius: 1.5rem; box-shadow: 0 4px 6px -1px rgba(0,0,0,0.1); border: 1px solid #e2e8f0; text-align: center; }
-        .btn-modern { transition: all 0.3s ease; font-weight: bold; border-radius: 1rem; }
-        .btn-modern:hover:not(:disabled) { transform: translateY(-2px); filter: brightness(1.1); box-shadow: 0 10px 15px -3px rgba(0,0,0,0.1); }
-    </style>
+    <link href="https://fonts.googleapis.com/css2?family=Sarabun&display=swap" rel="stylesheet">
+    <style>body { font-family: 'Sarabun', sans-serif; background-color: #f1f5f9; }</style>
 </head>
-<body class="p-4 md:p-12">
-    <div class="max-w-6xl mx-auto space-y-8">
-        <header class="text-center space-y-4">
-            <h1 class="text-4xl md:text-6xl font-bold text-slate-900">DashBoard <span class="text-indigo-600">ค่าทางสถิติ</span></h1>
-            <p class="text-xl text-slate-500">วิเคราะห์ข้อมูลแบบสอบถามอัจฉริยะ</p>
+<body class="p-8">
+    <div class="max-w-4xl mx-auto space-y-6">
+        <header class="text-center bg-white p-10 rounded-3xl shadow-sm border border-slate-200">
+            <h1 class="text-4xl font-bold text-slate-800">ระบบวิเคราะห์สถิติอัจฉริยะ</h1>
+            <p class="text-slate-500 mt-2">อัปโหลดไฟล์ Excel เพื่อเริ่มต้น</p>
+            
+            <div class="mt-8">
+                <input type="file" id="fileInput" class="block w-full text-sm text-slate-500 file:mr-4 file:py-3 file:px-6 file:rounded-full file:border-0 file:text-sm file:font-semibold file:bg-indigo-50 file:text-indigo-700 hover:file:bg-indigo-100 cursor-pointer" accept=".xlsx, .xls, .csv" onchange="handleFileUpload(event)">
+            </div>
         </header>
 
-        <section class="bg-white p-8 rounded-[2rem] shadow-xl border border-slate-100 text-center">
-            <label class="cursor-pointer">
-                <div class="p-12 border-4 border-dashed border-slate-200 rounded-[2rem] hover:bg-indigo-50 transition-all">
-                    <p class="text-2xl font-bold text-slate-700" id="file-status">คลิกเพื่อนำเข้าไฟล์ Excel (.xlsx) หรือ CSV</p>
-                    <input type="file" class="hidden" accept=".xlsx, .xls, .csv" onchange="handleFileUpload(event)">
+        <div id="resultArea" class="hidden space-y-6">
+            <div class="grid grid-cols-2 gap-4">
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 text-center">
+                    <p class="text-slate-500">ค่าเฉลี่ยรวม</p>
+                    <p id="totalMean" class="text-4xl font-bold text-indigo-600">-</p>
                 </div>
-            </label>
-            <button id="analyze-btn" onclick="analyzeData()" class="btn-modern bg-indigo-600 text-white px-8 py-4 mt-6 text-xl disabled:opacity-30" disabled>🚀 เริ่มวิเคราะห์ข้อมูล</button>
-        </section>
-
-        <div id="results-area" class="hidden space-y-8">
-            <div id="summary-cards" class="grid grid-cols-1 md:grid-cols-3 gap-6"></div>
-            
-            <div class="bg-white p-6 rounded-[2rem] shadow-lg overflow-hidden">
-                <h3 class="text-2xl font-bold mb-4 px-4">ตารางสรุปผลสถิติ</h3>
-                <div class="overflow-x-auto" id="table-container"></div>
+                <div class="bg-white p-6 rounded-2xl shadow-sm border border-slate-200 text-center">
+                    <p class="text-slate-500">จำนวนข้อคำถาม</p>
+                    <p id="itemCount" class="text-4xl font-bold text-emerald-600">-</p>
+                </div>
             </div>
-
-            <section id="ai-section" class="bg-slate-900 p-8 rounded-[3rem] text-white">
-                <h3 class="text-3xl font-bold mb-6 flex items-center gap-3">🤖 บทวิเคราะห์โดย AI</h3>
-                <div id="ai-content" class="bg-white/10 p-6 rounded-2xl min-h-[100px] text-xl leading-relaxed">
-                    กดปุ่ม "สรุปผลอัจฉริยะ" ด้านล่างเพื่อเริ่มการวิเคราะห์
-                </div>
-            </section>
+            
+            <div id="tableContainer" class="bg-white rounded-2xl shadow-sm border border-slate-200 overflow-hidden"></div>
+            
+            <button onclick="askAI()" class="w-full bg-slate-900 text-white py-4 rounded-2xl font-bold hover:bg-slate-800 transition-all shadow-lg">🤖 สรุปผลอัจฉริยะโดย AI</button>
+            <div id="aiResponse" class="bg-indigo-50 p-6 rounded-2xl border border-indigo-100 text-slate-700 min-h-[50px] leading-relaxed">บทวิเคราะห์จาก AI จะปรากฏตรงนี้...</div>
         </div>
     </div>
 
-    <div class="fixed bottom-8 right-8 flex flex-col gap-4">
-        <button onclick="generateAI()" id="ai-btn" class="btn-modern bg-indigo-600 text-white p-4 shadow-xl flex items-center gap-2" disabled>🧠 สรุปผลอัจฉริยะ</button>
-        <button onclick="showManual()" class="btn-modern bg-white text-slate-700 p-4 shadow-lg border border-slate-200">📘 คู่มือ</button>
-    </div>
-
     <script>
-        let itemData = [];
         let results = [];
-
-        function el(id) { return document.getElementById(id); }
 
         function handleFileUpload(e) {
             const file = e.target.files[0];
             if(!file) return;
-            el('file-status').innerText = "📂 อ่านไฟล์: " + file.name;
             const reader = new FileReader();
-            reader.onload = function(event) {
+            reader.onload = (event) => {
                 const data = event.target.result;
                 const workbook = XLSX.read(data, {type: 'binary'});
                 const sheet = workbook.Sheets[workbook.SheetNames[0]];
                 const rows = XLSX.utils.sheet_to_json(sheet, {header: 1});
                 
-                itemData = [];
                 const headers = rows[0];
+                results = [];
                 for(let c=0; c<headers.length; c++) {
-                    const scores = [];
+                    let sum = 0, count = 0;
                     for(let r=1; r<rows.length; r++) {
-                        const val = parseFloat(rows[r][c]);
-                        if(!isNaN(val)) scores.push(val);
+                        let val = parseFloat(rows[r][c]);
+                        if(!isNaN(val)) { sum += val; count++; }
                     }
-                    if(scores.length > 0) itemData.push({ name: headers[c] || `ข้อ ${c+1}`, scores });
+                    if(count > 0) results.push({ name: headers[c] || `Item ${c+1}`, mean: (sum/count).toFixed(2) });
                 }
-                el('analyze-btn').disabled = false;
+                showResults();
             };
             reader.readAsBinaryString(file);
         }
 
-        function analyzeData() {
-            el('results-area').classList.remove('hidden');
-            results = itemData.map(item => {
-                const sum = item.scores.reduce((a,b) => a+b, 0);
-                const mean = (sum / item.scores.length).toFixed(2);
-                return { name: item.name, mean: mean };
+        function showResults() {
+            document.getElementById('resultArea').classList.remove('hidden');
+            document.getElementById('itemCount').innerText = results.length;
+            const avg = (results.reduce((a, b) => a + parseFloat(b.mean), 0) / results.length).toFixed(2);
+            document.getElementById('totalMean').innerText = avg;
+
+            let html = '<table class="w-full text-left"><thead class="bg-slate-50 border-b border-slate-200"><tr><th class="p-4">ข้อคำถาม</th><th class="p-4 text-center">Mean</th></tr></thead><tbody class="divide-y divide-slate-100">';
+            results.forEach(r => {
+                html += `<tr><td class="p-4 text-slate-700">${r.name}</td><td class="p-4 text-center font-bold text-indigo-600">${r.mean}</td></tr>`;
             });
-
-            const totalMean = (results.reduce((a,b) => a + parseFloat(b.mean), 0) / results.length).toFixed(2);
-
-            el('summary-cards').innerHTML = `
-                <div class="card-stat"><p class="text-slate-500">ค่าเฉลี่ยรวม</p><p class="text-5xl font-bold text-indigo-600">${totalMean}</p></div>
-                <div class="card-stat"><p class="text-slate-500">จำนวนหัวข้อ</p><p class="text-5xl font-bold text-emerald-500">${results.length}</p></div>
-                <div class="card-stat"><p class="text-slate-500">สถานะ</p><p class="text-3xl font-bold text-slate-700">วิเคราะห์แล้ว</p></div>
-            `;
-
-            let tableHtml = `<table class="min-w-full">
-                <thead class="bg-slate-50"><tr><th class="p-4 text-left">ข้อคำถาม</th><th class="p-4">ค่าเฉลี่ย (Mean)</th></tr></thead>
-                <tbody class="divide-y divide-slate-100">
-                    ${results.map(r => `<tr><td class="p-4">${r.name}</td><td class="p-4 text-center font-bold">${r.mean}</td></tr>`).join('')}
-                </tbody></table>`;
-            el('table-container').innerHTML = tableHtml;
-            el('ai-btn').disabled = false;
-            window.scrollTo({ top: el('results-area').offsetTop, behavior: 'smooth' });
+            html += '</tbody></table>';
+            document.getElementById('tableContainer').innerHTML = html;
         }
 
-        async function generateAI() {
-            const content = el('ai-content');
-            content.innerHTML = "🌀 กำลังส่งข้อมูลให้ AI วิเคราะห์...";
-            const resultsText = results.map(r => `${r.name}: ${r.mean}`).join(', ');
+        async function askAI() {
+            const box = document.getElementById('aiResponse');
+            box.innerText = "🌀 AI กำลังวิเคราะห์ข้อมูลของคุณ...";
+            const dataStr = results.map(r => `${r.name}:${r.mean}`).join(', ');
             const apiKey = "AIzaSyBopJhznXvooWSBbwkT-bDMb6qU2jZJqF0";
             const url = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
@@ -123,16 +92,14 @@
                 const response = await fetch(url, {
                     method: 'POST',
                     headers: {'Content-Type': 'application/json'},
-                    body: JSON.stringify({ contents: [{ parts: [{ text: `สรุปสถิตินี้เป็นภาษาไทยแบบสั้นๆ: ${resultsText}` }] }] })
+                    body: JSON.stringify({ contents: [{ parts: [{ text: `สรุปสถิตินี้เป็นภาษาไทย: ${dataStr}` }] }] })
                 });
-                const data = await response.json();
-                content.innerHTML = data.candidates[0].content.parts[0].text;
+                const resData = await response.json();
+                box.innerText = resData.candidates[0].content.parts[0].text;
             } catch (err) {
-                content.innerHTML = "❌ เกิดข้อผิดพลาด: API Key อาจมีปัญหา";
+                box.innerText = "❌ เกิดข้อผิดพลาดในการเชื่อมต่อ AI";
             }
         }
-
-        function showManual() { alert("1. อัปโหลดไฟล์ Excel\n2. กดปุ่มวิเคราะห์\n3. ดูผลสถิติและ AI"); }
     </script>
 </body>
 </html>
