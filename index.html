@@ -661,17 +661,32 @@
             downloadCSV(csv, `Final_Analysis_Report_${new Date().getTime()}.csv`);
         }
 
-       async function generateExecutiveSummary() {
-    if (analysisResults.length === 0) analyzeData();
-    el('gemini-summary-section').classList.remove('hidden');
-    el('summary-content').innerHTML = '<div class="flex justify-center p-4"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div></div>';
-    el('gemini-summary-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
+      async function generateExecutiveSummary() {
+    // เช็กว่ามีข้อมูลสถิติหรือยัง ถ้าไม่มีให้สั่งคำนวณก่อน
+    if (!window.analysisResults || window.analysisResults.length === 0) {
+        if (typeof analyzeData === 'function') analyzeData();
+    }
+    
+    const results = window.analysisResults || [];
+    const summarySection = document.getElementById('gemini-summary-section');
+    const summaryContent = document.getElementById('summary-content');
+    
+    if (summarySection) summarySection.classList.remove('hidden');
+    if (summaryContent) summaryContent.innerHTML = '<div class="flex justify-center p-4"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div></div>';
+    
+    if (summarySection) summarySection.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-    const resultsData = analysisResults.map(item => `${item.itemName}: Mean=${item.stats.mean}`).join('\n');
+    // ถ้ายังไม่มีข้อมูลจริงๆ ให้หยุดทำงานและแจ้งผู้ใช้
+    if (results.length === 0) {
+        if (summaryContent) summaryContent.innerHTML = "กรุณาอัปโหลดไฟล์และประมวลผลสถิติก่อนใช้งานการสรุปผล";
+        return;
+    }
+
+    const resultsData = results.map(item => `- ${item.itemName}: Mean=${item.stats.mean}`).join('\n');
     const apiKey = "AIzaSyBopJhznXvooWSBbwkT-bDMb6qU2jZJqF0";
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
-    const promptText = `วิเคราะห์ผลทางสถิติของแบบสอบถามดังนี้:\n${resultsData}\nช่วยสรุปผลในภาพรวม จุดเด่น จุดที่ควรพัฒนา และข้อเสนอแนะเชิงวิชาการ (ตอบเป็นภาษาไทยและใช้รูปแบบ HTML ให้อ่านง่าย)`;
+    const promptText = `วิเคราะห์ผลสถิติดังนี้:\n${resultsData}\nช่วยสรุปผลในภาพรวม จุดเด่น จุดที่ควรพัฒนา และข้อเสนอแนะ (ตอบเป็นภาษาไทยและใช้รูปแบบ HTML ให้อ่านง่าย)`;
 
     try {
         const response = await fetch(apiUrl, {
@@ -681,14 +696,20 @@
                 contents: [{ parts: [{ text: promptText }] }]
             })
         });
+
         const result = await response.json();
-        const text = result.candidates?.[0]?.content?.parts?.[0]?.text || "ล้มเหลวในการสร้างสรุป";
+        
+        if (result.error) {
+            throw new Error(result.error.message);
+        }
+
+        const text = result.candidates?.[0]?.content?.parts?.[0]?.text || "ไม่สามารถดึงข้อมูลสรุปได้";
         aiSummaryResultText = text;
-        el('summary-content').innerHTML = text;
+        if (summaryContent) summaryContent.innerHTML = text;
         if (window.MathJax) MathJax.typesetPromise();
     } catch (error) {
-        el('summary-content').innerHTML = "เกิดข้อผิดพลาดในการเชื่อมต่อกับ AI";
-        console.error(error);
+        console.error("Gemini Error:", error);
+        if (summaryContent) summaryContent.innerHTML = "เกิดข้อผิดพลาด: " + error.message;
     }
 }
         function showManualModal() {
