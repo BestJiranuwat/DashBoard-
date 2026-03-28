@@ -662,23 +662,27 @@
         }
 
 async function generateExecutiveSummary() {
-    const results = analysisResults || [];
+    // 1. ดึงข้อมูลจาก analysisResults ที่คำนวณไว้ข้างบน
+    const results = (typeof analysisResults !== 'undefined') ? analysisResults : [];
+    
     const summarySection = document.getElementById('gemini-summary-section');
     const summaryContent = document.getElementById('summary-content');
     
     if (summarySection) summarySection.classList.remove('hidden');
-    if (summaryContent) summaryContent.innerHTML = 'กำลังวิเคราะห์...';
+    if (summaryContent) summaryContent.innerHTML = '<div class="flex justify-center p-4"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div> กำลังสรุปผลด้วย AI...</div>';
     if (summarySection) summarySection.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
+    // 2. เช็กว่ามีข้อมูลไหม
     if (results.length === 0) {
-        if (summaryContent) summaryContent.innerHTML = "⚠️ กรุณาอัปโหลดไฟล์สถิติก่อนครับ";
+        if (summaryContent) summaryContent.innerHTML = "<div class='p-4 text-orange-600 font-bold'>⚠️ ไม่พบข้อมูลสถิติ กรุณาอัปโหลดไฟล์ให้ตารางแสดงผลก่อนครับ</div>";
         return;
     }
 
+    // 3. เตรียมส่งข้อมูลไปหา Gemini
     const resultsData = results.map(item => `- ${item.itemName}: Mean=${item.stats.mean}`).join('\n');
     const apiKey = "AIzaSyBopJhznXvooWSBbwkT-bDMb6qU2jZJqF0";
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-    const promptText = `วิเคราะห์สถิติดังนี้:\n${resultsData}\nสรุปผลเป็นภาษาไทยและใช้ HTML`;
+    const promptText = `ในฐานะผู้เชี่ยวชาญสถิติ โปรดวิเคราะห์ข้อมูลนี้:\n${resultsData}\nช่วยสรุปผลภาพรวม จุดเด่น จุดที่ควรพัฒนา (ตอบเป็นภาษาไทยและใช้รูปแบบ HTML ให้อ่านง่าย)`;
 
     try {
         const response = await fetch(apiUrl, {
@@ -687,40 +691,16 @@ async function generateExecutiveSummary() {
             body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
         });
         const result = await response.json();
-        const text = result.candidates?.[0]?.content?.parts?.[0]?.text || "ล้มเหลวในการสร้างเนื้อหา";
-        aiSummaryResultText = text;
-        if (summaryContent) summaryContent.innerHTML = text;
-        if (window.MathJax) MathJax.typesetPromise();
-    } catch (error) {
-        if (summaryContent) summaryContent.innerHTML = "เกิดข้อผิดพลาด: " + error.message;
-    }
-}
-                contents: [{ parts: [{ text: promptText }] }]
-            })
-        });
-
-        const result = await response.json();
         
         if (result.error) throw new Error(result.error.message);
 
-        const text = result.candidates?.[0]?.content?.parts?.[0]?.text || "ล้มเหลวในการสร้างเนื้อหา";
+        const text = result.candidates?.[0]?.content?.parts?.[0]?.text || "AI ไม่ตอบกลับมา";
         aiSummaryResultText = text;
         if (summaryContent) summaryContent.innerHTML = text;
         if (window.MathJax) MathJax.typesetPromise();
-
     } catch (error) {
         console.error("Gemini Error:", error);
-        if (summaryContent) summaryContent.innerHTML = "<div class='text-red-500'>เกิดข้อผิดพลาดในการเรียก AI: " + error.message + "</div>";
-    }
-}
-        const text = result.candidates?.[0]?.content?.parts?.[0]?.text || "ล้มเหลวในการสร้างเนื้อหา";
-        aiSummaryResultText = text;
-        if (summaryContent) summaryContent.innerHTML = text;
-        if (window.MathJax) MathJax.typesetPromise();
-
-    } catch (error) {
-        console.error("Gemini Error:", error);
-        if (summaryContent) summaryContent.innerHTML = "<div class='text-red-500'>เกิดข้อผิดพลาด: " + error.message + "</div>";
+        if (summaryContent) summaryContent.innerHTML = "เกิดข้อผิดพลาด: " + error.message;
     }
 }
         function showManualModal() {
