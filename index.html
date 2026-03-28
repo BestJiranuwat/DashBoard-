@@ -661,22 +661,36 @@
             downloadCSV(csv, `Final_Analysis_Report_${new Date().getTime()}.csv`);
         }
 
-        async function generateExecutiveSummary() {
-            if (analysisResults.length === 0) analyzeData();
-            el('gemini-summary-section').classList.remove('hidden');
-            el('summary-content').innerHTML = `<div class="flex flex-col items-center gap-6 py-20 justify-center text-white"><div class="animate-spin h-14 w-14 border-8 border-indigo-200 border-t-indigo-600 rounded-full"></div><span class="text-3xl font-bold animate-pulse text-center">🧠 AI กำลังสรุปข้อมูลวิจัยให้คุณอย่างเป็นธรรม...</span></div>`;
-            el('gemini-summary-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
-            
-            const resultsData = analysisResults.map(item => `${item.itemName}: Mean=${item.stats.mean}, Discrimination=${item.stats.r}`).join('\n');
-           const apiKey = "AIzaSyBopJhznXvooWSBbwkT-bDMb6qU2jZJqF0";
-const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;            try {
-                const response = await fetch(apiUrl, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ contents: [{ parts: [{ text: `สรุปสถิติแบบสอบถาม: Alpha=${overallStats.alpha}, ข้อมูล:\n${resultsData}` }] }], systemInstruction: { parts: [{ text: "คุณคือผู้เชี่ยวชาญสถิติวิจัยและ Explainable AI สรุปข้อมูลมาตรวัดลิเคิร์ทหรือคะแนนสอบ โดยเน้นอธิบายเหตุผลเบื้องหลังตัวเลขและความเป็นธรรม สรุปในรูปแบบ Markdown ภาษาไทยที่อ่านง่าย พร้อมใส่อิโมจิ" }] } }) });
-                const result = await response.json(); const text = result.candidates?.[0]?.content?.parts?.[0]?.text || "ล้มเหลวในการสร้างสรุป";
-                aiSummaryResultText = text; el('summary-content').innerHTML = text; 
-                if (window.MathJax) MathJax.typesetPromise();
-            } catch (error) { el('summary-content').innerHTML = `🚨 ข้อผิดพลาด AI: ${error.message}`; }
-        }
+       async function generateExecutiveSummary() {
+    if (analysisResults.length === 0) analyzeData();
+    el('gemini-summary-section').classList.remove('hidden');
+    el('summary-content').innerHTML = '<div class="flex justify-center p-4"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div></div>';
+    el('gemini-summary-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
+    const resultsData = analysisResults.map(item => `${item.itemName}: Mean=${item.stats.mean}, Discrimination=${item.stats.discrimination}`).join('\n');
+    const apiKey = "AIzaSyBopJhznXvooWSBbwkT-bDMb6qU2jZJqF0";
+    const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
+
+    const prompt = `วิเคราะห์ผลทางสถิติของแบบสอบถามดังนี้:\n${resultsData}\nช่วยสรุปผลในภาพรวม จุดเด่น จุดที่ควรพัฒนา และข้อเสนอแนะเชิงวิชาการ (ตอบเป็นภาษาไทยและจัดรูปแบบด้วย HTML ให้สวยงาม)`;
+
+    try {
+        const response = await fetch(apiUrl, {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({
+                contents: [{ parts: [{ text: prompt }] }]
+            })
+        });
+        const result = await response.json();
+        const text = result.candidates?.[0]?.content?.parts?.[0]?.text || "ล้มเหลวในการสร้างสรุป";
+        aiSummaryResultText = text;
+        el('summary-content').innerHTML = text;
+        if (window.MathJax) MathJax.typesetPromise();
+    } catch (error) {
+        el('summary-content').innerHTML = "เกิดข้อผิดพลาดในการเชื่อมต่อกับ AI";
+        console.error(error);
+    }
+}
         function showManualModal() {
             const modal = el('manual-modal');
             const contentBody = el('manual-content-body');
