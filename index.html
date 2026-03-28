@@ -662,40 +662,47 @@
         }
 
 async function generateExecutiveSummary() {
+    const results = (typeof analysisResults !== 'undefined') ? analysisResults : [];
     const summarySection = document.getElementById('gemini-summary-section');
     const summaryContent = document.getElementById('summary-content');
     
     if (summarySection) summarySection.classList.remove('hidden');
-    if (summaryContent) summaryContent.innerHTML = '<div class="flex justify-center p-4"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div> กำลังสรุปผลด้วย AI...</div>';
+    if (summaryContent) summaryContent.innerHTML = 'กำลังประมวลผลบทวิเคราะห์...';
     if (summarySection) summarySection.scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-    const results = (typeof analysisResults !== 'undefined') ? analysisResults : [];
-
     if (results.length === 0) {
-        if (summaryContent) summaryContent.innerHTML = "<div class='p-4 text-orange-600 font-bold'>⚠️ กรุณาอัปโหลดไฟล์และรอให้ตารางสถิติแสดงผลก่อนกดปุ่มนี้ครับ</div>";
+        if (summaryContent) summaryContent.innerHTML = "⚠️ ไม่พบข้อมูลสถิติ กรุณาอัปโหลดไฟล์ให้ตารางแสดงผลก่อนครับ";
         return;
     }
 
     const resultsData = results.map(item => `- ${item.itemName}: Mean=${item.stats.mean}`).join('\n');
-    const apiKey = "AIzaSyD-7V_Y6Y1x6z9-YF5G9G8G7G6G5G4G3G2";
+    const apiKey = "AIzaSyBopJhznXvooWSBbwkT-bDMb6qU2jZJqF0"; 
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
-    const promptText = `วิเคราะห์สถิติดังนี้:\n${resultsData}\nสรุปผลเป็นภาษาไทยแบบ HTML`;
 
     try {
         const response = await fetch(apiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ contents: [{ parts: [{ text: promptText }] }] })
+            body: JSON.stringify({ contents: [{ parts: [{ text: `วิเคราะห์สถิติดังนี้:\n${resultsData}\nสรุปเป็นภาษาไทยแบบ HTML` }] }] })
         });
         const result = await response.json();
-        const text = result.candidates?.[0]?.content?.parts?.[0]?.text || "ล้มเหลวในการสร้างเนื้อหา";
+        const text = result.candidates?.[0]?.content?.parts?.[0]?.text || "AI ไม่ตอบกลับ";
         aiSummaryResultText = text;
         if (summaryContent) summaryContent.innerHTML = text;
         if (window.MathJax) MathJax.typesetPromise();
     } catch (error) {
         if (summaryContent) summaryContent.innerHTML = "เกิดข้อผิดพลาด: " + error.message;
-} // <--- ต้องมีปีกกาปิดตัวนี้เพิ่มเข้ามา 1 อัน เพื่อปิดฟังก์ชัน generateExecutiveSummary
+    }
+}
 
+// --- ส่วนสำคัญ: เชื่อมต่อฟังก์ชันกับหน้าเว็บ (ห้ามลบ) ---
+window.handleFileUpload = handleFileUpload; 
+window.analyzeData = analyzeData; 
+window.generateExecutiveSummary = generateExecutiveSummary; 
+window.downloadAllAnalysis = downloadAllAnalysis; 
+window.showManualModal = showManualModal; 
+window.closeManualModal = closeManualModal; 
+window.handleItemSelectionChange = handleItemSelectionChange;
 </script>
 </body>
 </html>
