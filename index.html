@@ -667,18 +667,18 @@
     el('summary-content').innerHTML = '<div class="flex justify-center p-4"><div class="animate-spin rounded-full h-8 w-8 border-b-2 border-blue-500"></div></div>';
     el('gemini-summary-section').scrollIntoView({ behavior: 'smooth', block: 'start' });
 
-    const resultsData = analysisResults.map(item => `${item.itemName}: Mean=${item.stats.mean}, Discrimination=${item.stats.discrimination}`).join('\n');
+    const resultsData = analysisResults.map(item => `${item.itemName}: Mean=${item.stats.mean}`).join('\n');
     const apiKey = "AIzaSyBopJhznXvooWSBbwkT-bDMb6qU2jZJqF0";
     const apiUrl = `https://generativelanguage.googleapis.com/v1beta/models/gemini-1.5-flash:generateContent?key=${apiKey}`;
 
-    const prompt = `วิเคราะห์ผลทางสถิติของแบบสอบถามดังนี้:\n${resultsData}\nช่วยสรุปผลในภาพรวม จุดเด่น จุดที่ควรพัฒนา และข้อเสนอแนะเชิงวิชาการ (ตอบเป็นภาษาไทยและจัดรูปแบบด้วย HTML ให้สวยงาม)`;
+    const promptText = `วิเคราะห์ผลทางสถิติของแบบสอบถามดังนี้:\n${resultsData}\nช่วยสรุปผลในภาพรวม จุดเด่น จุดที่ควรพัฒนา และข้อเสนอแนะเชิงวิชาการ (ตอบเป็นภาษาไทยและใช้รูปแบบ HTML ให้อ่านง่าย)`;
 
     try {
         const response = await fetch(apiUrl, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({
-                contents: [{ parts: [{ text: prompt }] }]
+                contents: [{ parts: [{ text: promptText }] }]
             })
         });
         const result = await response.json();
